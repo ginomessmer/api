@@ -34,7 +34,7 @@ namespace BlessedHomepage.API
                 .AddAzureADBearer(options => Configuration.Bind("AzureAd", options));
             services.AddControllers();
 
-            services.AddOpenApiDocument();
+            services.AddOpenApiDocument(settings => { settings.Title = "Homepage API"; });
 
             // Services
             services.AddSingleton<LiteDatabase>(provider => new LiteDatabase("data.db"));
@@ -57,6 +57,8 @@ namespace BlessedHomepage.API
             app.UseAuthorization();
 
             app.UseOpenApi().UseSwaggerUi3();
+
+            app.UseForwardedHeaders();
 
             app.UseEndpoints(endpoints =>
             {
