@@ -339,3 +339,4 @@ ASALocalRun/
 # BeatPulse healthcheck temp database
 healthchecksdb
 /BlessedHomepage.API/data.db
+/BlessedHomepage.API/data-log.db
