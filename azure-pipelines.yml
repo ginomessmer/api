@@ -13,6 +13,7 @@ stages:
       inputs:
         command: 'build'
         Dockerfile: '**/Dockerfile'
+        buildContext: '.'
   - job: Test
     steps:
     - task: DotNetCoreCLI@2
