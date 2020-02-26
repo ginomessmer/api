@@ -2,6 +2,7 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using BlessedHomepage.API;
+using BlessedHomepage.API.Models;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -47,17 +48,29 @@ namespace BlessedHomepage.Tests
         }
 
         [Fact]
-        public async Task Create_NewPost_Successfully()
+        public async Task CreateRetrieve_NewPost_Successfully()
         {
-            var response = await _client.PostAsync("/blog/posts", new StringContent(JsonConvert.SerializeObject(new
+            // Arrange
+            const string expectedId = "test-post";
+            var postContent = new StringContent(JsonConvert.SerializeObject(new
             {
-                id = "test-post",
+                id = expectedId,
                 title = "This was literally posted from an integration test",
                 externalLink = "http://example.com",
                 postedAt = DateTime.Now
-            })));
+            }));
 
-            response.EnsureSuccessStatusCode();
+            // Act
+            var postResponse = await _client.PostAsync("/blog/posts", postContent);
+            postResponse.EnsureSuccessStatusCode();
+
+            var getResponse = await _client.GetAsync("/blog/posts");
+            getResponse.EnsureSuccessStatusCode();
+
+            var post = JsonConvert.DeserializeObject<BlogPost>(await getResponse.Content.ReadAsStringAsync());
+            
+            // Assert
+            Assert.Equal(expectedId, post.Id);
         }
     }
 }
