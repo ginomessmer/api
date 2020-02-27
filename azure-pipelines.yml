@@ -78,7 +78,5 @@ stages:
     - task: CmdLine@2
       displayName: Run Loadmill Test
       inputs:
-        script: |
-          npm i -g loadmill
-          loadmill $(loadmill.testsuite) -s -w -t $(loadmill.token)
+        script: 'npx loadmill $(loadmill.testsuite) -s -w -t $(loadmill.token)'
     
