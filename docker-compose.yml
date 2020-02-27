@@ -1,0 +1,22 @@
+version: '3.7'
+
+services:
+  api:
+    image: ginomessmer/api
+    networks:
+      - proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ginomessmer_api-ssl.rule=Host(`api.ginomessmer.me`)"
+      - "traefik.http.routers.ginomessmer_api-ssl.entrypoints=websecure"
+      - "traefik.http.routers.ginomessmer_api-ssl.tls=true"
+      - "traefik.http.routers.ginomessmer_api-ssl.tls.certresolver=default"
+      - "traefik.http.routers.ginomessmer_api-ssl.middlewares=ginomessmer-cors@docker"
+      - "traefik.http.middlewares.ginomessmer-cors.headers.accesscontrolallowmethods=GET,DELETE,PUT,POST,OPTIONS"
+      - "traefik.http.middlewares.ginomessmer-cors.headers.accesscontrolalloworigin=origin-list-or-null"
+      - "traefik.http.middlewares.ginomessmer-cors.headers.accesscontrolmaxage=100"
+      - "traefik.http.middlewares.ginomessmer-cors.headers.addvaryheader=true"
+
+networks:
+  proxy:
+    external: true
