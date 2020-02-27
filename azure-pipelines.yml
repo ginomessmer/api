@@ -1,20 +1,27 @@
-
 trigger:
   - master
 
+variables:
+- group: loadmill
+
 stages:
-- stage: build
-  displayName: Build
+- stage: Build
   jobs:
-  - job: Build
+  - job: BuildDocker
+    displayName: 'Build Docker Image'
     steps:
     - task: Docker@2
       displayName: 'docker build'
       inputs:
-        command: 'build'
+        containerRegistry: 'hub.docker.com'
+        repository: 'ginomessmer/api'
+        command: 'buildAndPush'
         Dockerfile: '**/Dockerfile'
         buildContext: '.'
+        tags: 'latest'
+
   - job: Test
+    displayName: 'Test'
     steps:
     - task: DotNetCoreCLI@2
       displayName: 'dotnet build'
@@ -25,3 +32,39 @@ stages:
       inputs:
         command: 'test'
         projects: '**/*.Tests.csproj'
+
+- stage: Deploy
+  dependsOn: Build
+  jobs:
+  - job: DeployProd
+    displayName: 'Deploy to Production'
+    steps:
+    - task: CopyFilesOverSSH@0
+      displayName: 'Copy Docker Compose File'
+      inputs:
+        sshEndpoint: hostProd
+        contents: 'docker-compose.yml'
+        targetFolder: '~/.tmp/azure/ginomessmer/api'
+        cleanTargetFolder: true
+        readyTimeout: '20000'
+    - task: SSH@0
+      inputs:
+        sshEndpoint: hostProd
+        runOptions: 'inline'
+        inline: 'docker stack deploy homepage --compose-file ~/.tmp/azure/ginomessmer/api/docker-compose.yml'
+        readyTimeout: '20000'
+
+- stage: PostDeployTest
+  displayName: 'Test Deployment'
+  dependsOn: Deploy
+  jobs:
+  - job: TestProd
+    displayName: 'Run Tests in Production'
+    steps:
+    - task: CmdLine@2
+      displayName: Run Loadmill Test
+      inputs:
+        script: |
+          npm i -g loadmill
+          loadmill $(loadmill.testsuite) -s -w -t $(loadmill.token)
+    
