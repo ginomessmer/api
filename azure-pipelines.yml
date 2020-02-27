@@ -3,8 +3,8 @@ trigger:
 
 variables:
 - group: loadmill
-- name: isPr
-  value: ${{eq(variables['Build.Reason'], 'PullRequest')}}
+- name: deploymentEnabled
+  value: ${{not(eq(variables['Build.Reason'], 'PullRequest'))}}
 
 stages:
 - stage: Build
@@ -23,7 +23,7 @@ stages:
         tags: 'latest'
     - task: Docker@2
       displayName: 'docker push'
-      condition: not(variables.isPr)
+      condition: $(deploymentEnabled)
       inputs:
         containerRegistry: 'hub.docker.com'
         repository: 'ginomessmer/api'
@@ -46,7 +46,7 @@ stages:
 
 - stage: Deploy
   dependsOn: Build
-  condition: not(variables.isPr)
+  condition: $(deploymentEnabled)
   jobs:
   - job: DeployProd
     displayName: 'Deploy to Production'
@@ -70,7 +70,7 @@ stages:
 - stage: PostDeployTest
   displayName: 'Post Deployment Tests'
   dependsOn: Deploy
-  condition: not(variables.isPr)
+  condition: $(deploymentEnabled)
   jobs:
   - job: TestProd
     displayName: 'Run Tests in Production'
