@@ -15,13 +15,21 @@ stages:
       inputs:
         containerRegistry: 'hub.docker.com'
         repository: 'ginomessmer/api'
-        command: 'buildAndPush'
+        command: 'build'
         Dockerfile: '**/Dockerfile'
         buildContext: '.'
+        tags: 'latest'
+    - task: Docker@2
+      displayName: 'docker push'
+      inputs:
+        containerRegistry: 'hub.docker.com'
+        repository: 'ginomessmer/api'
+        command: 'push'
         tags: 'latest'
 
   - job: Test
     displayName: 'Test'
+    continueOnError: true
     steps:
     - task: DotNetCoreCLI@2
       displayName: 'dotnet build'
@@ -35,6 +43,7 @@ stages:
 
 - stage: Deploy
   dependsOn: Build
+  condition: not(eq(variables['Build.Reason'], 'PullRequest'))
   jobs:
   - job: DeployProd
     displayName: 'Deploy to Production'
@@ -48,6 +57,7 @@ stages:
         cleanTargetFolder: true
         readyTimeout: '20000'
     - task: SSH@0
+      displayName: 'Deploy Docker Stack'
       inputs:
         sshEndpoint: hostProd
         runOptions: 'inline'
@@ -55,8 +65,9 @@ stages:
         readyTimeout: '20000'
 
 - stage: PostDeployTest
-  displayName: 'Test Deployment'
+  displayName: 'Post Deployment Tests'
   dependsOn: Deploy
+  condition: not(eq(variables['Build.Reason'], 'PullRequest'))
   jobs:
   - job: TestProd
     displayName: 'Run Tests in Production'
