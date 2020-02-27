@@ -23,7 +23,7 @@ stages:
         tags: 'latest'
     - task: Docker@2
       displayName: 'docker push'
-      condition: $(deploymentEnabled)
+      condition: variables.deploymentEnabled
       inputs:
         containerRegistry: 'hub.docker.com'
         repository: 'ginomessmer/api'
@@ -46,7 +46,7 @@ stages:
 
 - stage: Deploy
   dependsOn: Build
-  condition: $(deploymentEnabled)
+  condition: variables.deploymentEnabled
   jobs:
   - job: DeployProd
     displayName: 'Deploy to Production'
@@ -70,7 +70,7 @@ stages:
 - stage: PostDeployTest
   displayName: 'Post Deployment Tests'
   dependsOn: Deploy
-  condition: $(deploymentEnabled)
+  condition: variables.deploymentEnabled
   jobs:
   - job: TestProd
     displayName: 'Run Tests in Production'
