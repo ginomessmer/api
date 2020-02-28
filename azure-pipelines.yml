@@ -1,19 +1,38 @@
-
 trigger:
   - master
 
+variables:
+- group: loadmill
+- name: deploymentEnabled
+  value: ${{not(eq(variables['Build.Reason'], 'PullRequest'))}}
+
 stages:
-- stage: build
-  displayName: Build
+- stage: Build
   jobs:
-  - job: Build
+  - job: BuildDocker
+    displayName: 'Build Docker Image'
     steps:
     - task: Docker@2
       displayName: 'docker build'
       inputs:
+        containerRegistry: 'hub.docker.com'
+        repository: 'ginomessmer/api'
         command: 'build'
         Dockerfile: '**/Dockerfile'
+        buildContext: '.'
+        tags: 'latest'
+    - task: Docker@2
+      displayName: 'docker push'
+      condition: variables.deploymentEnabled
+      inputs:
+        containerRegistry: 'hub.docker.com'
+        repository: 'ginomessmer/api'
+        command: 'push'
+        tags: 'latest'
+
   - job: Test
+    displayName: 'Test'
+    continueOnError: true
     steps:
     - task: DotNetCoreCLI@2
       displayName: 'dotnet build'
@@ -24,3 +43,40 @@ stages:
       inputs:
         command: 'test'
         projects: '**/*.Tests.csproj'
+
+- stage: Deploy
+  dependsOn: Build
+  condition: variables.deploymentEnabled
+  jobs:
+  - job: DeployProd
+    displayName: 'Deploy to Production'
+    steps:
+    - task: CopyFilesOverSSH@0
+      displayName: 'Copy Docker Compose File'
+      inputs:
+        sshEndpoint: hostProd
+        contents: 'docker-compose.yml'
+        targetFolder: '~/.tmp/azure/ginomessmer/api'
+        cleanTargetFolder: true
+        readyTimeout: '20000'
+    - task: SSH@0
+      displayName: 'Deploy Docker Stack'
+      inputs:
+        sshEndpoint: hostProd
+        runOptions: 'inline'
+        inline: 'docker stack deploy homepage --compose-file ~/.tmp/azure/ginomessmer/api/docker-compose.yml'
+        readyTimeout: '20000'
+
+- stage: PostDeployTest
+  displayName: 'Post Deployment Tests'
+  dependsOn: Deploy
+  condition: variables.deploymentEnabled
+  jobs:
+  - job: TestProd
+    displayName: 'Run Tests in Production'
+    steps:
+    - task: CmdLine@2
+      displayName: Run Loadmill Test
+      inputs:
+        script: 'npx loadmill $(loadmill.testsuite) -s -w -t $(loadmill.token)'
+    
